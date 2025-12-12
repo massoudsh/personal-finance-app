@@ -10,7 +10,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -20,6 +19,8 @@ wheels/
 .installed.cfg
 *.egg
 venv/
+.venv/
+backend/.venv/
 env/
 ENV/
 
@@ -59,4 +60,8 @@ Thumbs.db
 
 # Docker
 .dockerignore
+
+# Frontend (Next.js) - keep source under frontend/lib/ tracked (the Python ignore list above is broad)
+!frontend/lib/
+!frontend/lib/**
 
