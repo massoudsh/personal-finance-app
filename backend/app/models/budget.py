@@ -1,7 +1,7 @@
 """
 Budget model for budget management.
 """
-from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, Enum, Date
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, Enum, Date, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum

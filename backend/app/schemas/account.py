@@ -1,18 +1,20 @@
 """
 Account schemas for request/response validation.
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, condecimal
 from typing import Optional
 from datetime import datetime
 from decimal import Decimal
 from app.models.account import AccountType
+
+Money = condecimal(max_digits=10, decimal_places=2)
 
 
 class AccountBase(BaseModel):
     """Base account schema."""
     name: str = Field(..., min_length=1, max_length=100)
     account_type: AccountType
-    balance: Decimal = Field(default=Decimal("0.00"), decimal_places=2)
+    balance: Money = Decimal("0.00")
     currency: str = Field(default="USD", max_length=3)
     description: Optional[str] = None
 
@@ -26,7 +28,7 @@ class AccountUpdate(BaseModel):
     """Schema for account update."""
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     account_type: Optional[AccountType] = None
-    balance: Optional[Decimal] = None
+    balance: Optional[Money] = None
     currency: Optional[str] = Field(None, max_length=3)
     description: Optional[str] = None
     is_active: Optional[bool] = None

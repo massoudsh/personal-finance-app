@@ -1,7 +1,7 @@
 """
 Account model for financial accounts.
 """
-from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, Enum, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum

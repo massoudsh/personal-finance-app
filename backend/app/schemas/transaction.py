@@ -1,18 +1,20 @@
 """
 Transaction schemas for request/response validation.
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, condecimal
 from typing import Optional
 from datetime import datetime
 from decimal import Decimal
 from app.models.transaction import TransactionType
+
+Money = condecimal(max_digits=10, decimal_places=2)
 
 
 class TransactionBase(BaseModel):
     """Base transaction schema."""
     account_id: int
     category_id: Optional[int] = None
-    amount: Decimal = Field(..., decimal_places=2)
+    amount: Money
     transaction_type: TransactionType
     description: Optional[str] = None
     date: datetime
@@ -28,7 +30,7 @@ class TransactionUpdate(BaseModel):
     """Schema for transaction update."""
     account_id: Optional[int] = None
     category_id: Optional[int] = None
-    amount: Optional[Decimal] = Field(None, decimal_places=2)
+    amount: Optional[Money] = None
     transaction_type: Optional[TransactionType] = None
     description: Optional[str] = None
     date: Optional[datetime] = None

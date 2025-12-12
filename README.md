@@ -104,15 +104,10 @@ The frontend will be available at `http://localhost:3000`
 
 1. Start all services:
 ```bash
-docker-compose up -d
+docker compose up -d --build
 ```
 
-2. Initialize the database:
-```bash
-docker-compose exec backend python -m app.db.init_db
-```
-
-3. Access the application:
+2. Access the application:
    - Backend API: `http://localhost:8000`
    - Frontend: `http://localhost:3000`
 

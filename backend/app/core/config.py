@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/personalfinance"
+    AUTO_CREATE_DB: bool = False
     
     # Security
     SECRET_KEY: str = "your-secret-key-change-in-production"
