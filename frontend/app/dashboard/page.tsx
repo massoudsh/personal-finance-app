@@ -4,10 +4,21 @@ import { useEffect, useState } from 'react'
 import { apiClient } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import Link from 'next/link'
+import { format, subDays } from 'date-fns'
+import Navbar from '@/components/layout/Navbar'
+import ExpenseChart from '@/components/charts/ExpenseChart'
+import IncomeExpenseBar from '@/components/charts/IncomeExpenseBar'
+import type { DashboardSummary } from '@/lib/schemas/dashboard'
+import type { Accounts } from '@/lib/schemas/account'
+import type { ExpensesByCategory, IncomeVsExpenses } from '@/lib/schemas/reports'
 
 export default function DashboardPage() {
-  const [summary, setSummary] = useState<any>(null)
+  const [summary, setSummary] = useState<DashboardSummary | null>(null)
+  const [accounts, setAccounts] = useState<Accounts>([])
+  const [expensesByCategory, setExpensesByCategory] = useState<ExpensesByCategory>([])
+  const [incomeVsExpenses, setIncomeVsExpenses] = useState<IncomeVsExpenses | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isGuest, setIsGuest] = useState(false)
 
   useEffect(() => {
     loadDashboard()
@@ -15,10 +26,29 @@ export default function DashboardPage() {
 
   const loadDashboard = async () => {
     try {
-      const data = await apiClient.getDashboardSummary()
-      setSummary(data)
+      const [summaryData, accountsData, expByCat, incVsExp] = await Promise.all([
+        apiClient.getDashboardSummary(),
+        apiClient.getAccounts(),
+        apiClient.getExpensesByCategory(
+          // last 30 days
+          format(subDays(new Date(), 30), "yyyy-MM-dd'T'HH:mm:ssxxx"),
+          format(new Date(), "yyyy-MM-dd'T'HH:mm:ssxxx")
+        ),
+        apiClient.getIncomeVsExpenses(
+          format(subDays(new Date(), 30), "yyyy-MM-dd'T'HH:mm:ssxxx"),
+          format(new Date(), "yyyy-MM-dd'T'HH:mm:ssxxx")
+        ),
+      ])
+      setSummary(summaryData)
+      setAccounts(accountsData)
+      setExpensesByCategory(expByCat)
+      setIncomeVsExpenses(incVsExp)
     } catch (error) {
       console.error('Failed to load dashboard:', error)
+      const status = (error as any)?.response?.status
+      if (status === 401) {
+        setIsGuest(true)
+      }
     } finally {
       setLoading(false)
     }
@@ -26,8 +56,152 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 w-48 bg-gray-200 rounded" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="h-28 bg-white rounded-lg shadow" />
+              <div className="h-28 bg-white rounded-lg shadow" />
+              <div className="h-28 bg-white rounded-lg shadow" />
+              <div className="h-28 bg-white rounded-lg shadow" />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="h-80 bg-white rounded-lg shadow lg:col-span-2" />
+              <div className="h-80 bg-white rounded-lg shadow" />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (isGuest) {
+    const guestSummary: DashboardSummary = {
+      total_balance: 0,
+      month_income: 0,
+      month_expenses: 0,
+      month_net: 0,
+      active_budgets: 0,
+      active_goals: 0,
+      recent_transactions: [],
+    }
+
+    const guestAccounts = [
+      { id: 1, name: 'Checking', account_type: 'CHECKING', balance: 2450.12, currency: 'USD' },
+      { id: 2, name: 'Savings', account_type: 'SAVINGS', balance: 12850.0, currency: 'USD' },
+      { id: 3, name: 'Credit Card', account_type: 'CREDIT_CARD', balance: -420.55, currency: 'USD' },
+    ]
+
+    const guestExpensesByCategory = [
+      { name: 'Groceries', value: 520 },
+      { name: 'Rent', value: 1800 },
+      { name: 'Transport', value: 210 },
+      { name: 'Dining', value: 140 },
+      { name: 'Subscriptions', value: 65 },
+    ]
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="px-4 py-6 sm:px-0">
+            <div className="mb-6 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-yellow-900">
+              You’re in <span className="font-semibold">Guest Mode</span>. Create an account to connect your real accounts and track
+              spending.
+            </div>
+
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Overview</h2>
+                <p className="text-sm text-gray-600 mt-1">A realistic sample dashboard so you can explore the UI without signing in.</p>
+              </div>
+              <Link
+                href="/register"
+                className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 text-sm font-medium"
+              >
+                Create account
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <p className="text-sm text-gray-500">Net worth</p>
+                <p className="mt-2 text-2xl font-semibold text-gray-900">{formatCurrency(14879.57)}</p>
+                <p className="mt-1 text-xs text-gray-500">Across {guestAccounts.length} accounts</p>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <p className="text-sm text-gray-500">Income (30d)</p>
+                <p className="mt-2 text-2xl font-semibold text-green-700">{formatCurrency(4200)}</p>
+                <p className="mt-1 text-xs text-gray-500">Paychecks + other income</p>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <p className="text-sm text-gray-500">Spending (30d)</p>
+                <p className="mt-2 text-2xl font-semibold text-red-700">{formatCurrency(2735)}</p>
+                <p className="mt-1 text-xs text-gray-500">Bills + day-to-day</p>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <p className="text-sm text-gray-500">Savings rate</p>
+                <p className="mt-2 text-2xl font-semibold text-gray-900">35%</p>
+                <p className="mt-1 text-xs text-gray-500">Income minus spending</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 lg:col-span-2">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-base font-semibold text-gray-900">Cashflow snapshot</h3>
+                  <span className="text-xs text-gray-500">Last 30 days</span>
+                </div>
+                <IncomeExpenseBar
+                  data={[
+                    { name: '30d', income: 4200, expenses: 2735, net: 1465 },
+                  ]}
+                />
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-base font-semibold text-gray-900">Spending by category</h3>
+                  <span className="text-xs text-gray-500">Sample</span>
+                </div>
+                <ExpenseChart data={guestExpensesByCategory} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <h3 className="text-base font-semibold text-gray-900 mb-2">Accounts</h3>
+                <div className="space-y-3">
+                  {guestAccounts.map((a) => (
+                    <div key={a.id} className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{a.name}</p>
+                        <p className="text-xs text-gray-500">{a.account_type.replace('_', ' ')}</p>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900">{formatCurrency(a.balance)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <h3 className="text-base font-semibold text-gray-900 mb-2">Recent activity</h3>
+                <p className="text-sm text-gray-600">
+                  Sign in to track real transactions and see your recent activity here.
+                </p>
+                <div className="mt-4 flex gap-3">
+                  <Link href="/register" className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 text-sm font-medium">
+                    Create account
+                  </Link>
+                  <Link href="/login" className="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    Sign in
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     )
   }
@@ -42,143 +216,132 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-xl font-bold text-primary-600">Finance App</h1>
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <Link href="/dashboard" className="border-primary-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Dashboard
-                </Link>
-                <Link href="/accounts" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Accounts
-                </Link>
-                <Link href="/transactions" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Transactions
-                </Link>
-                <Link href="/budgets" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Budgets
-                </Link>
-                <Link href="/goals" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Goals
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h2>
-
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="text-2xl">💰</div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Total Balance</dt>
-                      <dd className="text-lg font-medium text-gray-900">{formatCurrency(summary.total_balance)}</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Overview</h2>
+              <p className="text-sm text-gray-600 mt-1">Last refresh: {format(new Date(), 'PPpp')}</p>
             </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="text-2xl">📈</div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Monthly Income</dt>
-                      <dd className="text-lg font-medium text-green-600">{formatCurrency(summary.month_income)}</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="text-2xl">📉</div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Monthly Expenses</dt>
-                      <dd className="text-lg font-medium text-red-600">{formatCurrency(summary.month_expenses)}</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="text-2xl">💵</div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Net Income</dt>
-                      <dd className={`text-lg font-medium ${summary.month_net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(summary.month_net)}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
+            <div className="flex gap-2">
+              <Link href="/transactions" className="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Add transaction
+              </Link>
+              <Link href="/accounts" className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 text-sm font-medium">
+                Add account
+              </Link>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 mb-8">
-            <div className="bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Active Budgets</h3>
-              <p className="text-3xl font-bold text-primary-600">{summary.active_budgets}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <p className="text-sm text-gray-500">Total balance</p>
+              <p className="mt-2 text-2xl font-semibold text-gray-900">{formatCurrency(summary.total_balance)}</p>
+              <p className="mt-1 text-xs text-gray-500">Across {accounts.length} active accounts</p>
             </div>
-
-            <div className="bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Active Goals</h3>
-              <p className="text-3xl font-bold text-primary-600">{summary.active_goals}</p>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <p className="text-sm text-gray-500">Income (month)</p>
+              <p className="mt-2 text-2xl font-semibold text-green-700">{formatCurrency(summary.month_income)}</p>
+              <p className="mt-1 text-xs text-gray-500">This month to date</p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <p className="text-sm text-gray-500">Expenses (month)</p>
+              <p className="mt-2 text-2xl font-semibold text-red-700">{formatCurrency(summary.month_expenses)}</p>
+              <p className="mt-1 text-xs text-gray-500">This month to date</p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <p className="text-sm text-gray-500">Net (month)</p>
+              <p className={['mt-2 text-2xl font-semibold', summary.month_net >= 0 ? 'text-green-700' : 'text-red-700'].join(' ')}>
+                {formatCurrency(summary.month_net)}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">{summary.active_budgets} budgets • {summary.active_goals} goals</p>
             </div>
           </div>
 
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Transactions</h3>
-              <div className="flow-root">
-                <ul className="-my-5 divide-y divide-gray-200">
-                  {summary.recent_transactions.map((transaction: any) => (
-                    <li key={transaction.id} className="py-4">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {transaction.description || 'No description'}
-                          </p>
-                          <p className="text-sm text-gray-500">{transaction.date}</p>
-                        </div>
-                        <div>
-                          <span className={`text-sm font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                            {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                          </span>
-                        </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 lg:col-span-2">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-semibold text-gray-900">Income vs expenses</h3>
+                <span className="text-xs text-gray-500">Last 30 days</span>
+              </div>
+              <IncomeExpenseBar
+                data={[
+                  {
+                    name: '30d',
+                    income: incomeVsExpenses?.income ?? 0,
+                    expenses: incomeVsExpenses?.expenses ?? 0,
+                    net: incomeVsExpenses?.net ?? 0,
+                  },
+                ]}
+              />
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-semibold text-gray-900">Spending by category</h3>
+                <span className="text-xs text-gray-500">Last 30 days</span>
+              </div>
+              <ExpenseChart
+                data={expensesByCategory.map((x) => ({
+                  name: x.category_id ? `Category ${x.category_id}` : 'Uncategorized',
+                  value: x.total,
+                }))}
+              />
+              {expensesByCategory.length === 0 && (
+                <p className="text-sm text-gray-500 mt-3">No expense data yet—add a few transactions to see insights.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <h3 className="text-base font-semibold text-gray-900 mb-4">Accounts</h3>
+              {accounts.length === 0 ? (
+                <p className="text-sm text-gray-500">No accounts yet. Add an account to start tracking balances.</p>
+              ) : (
+                <div className="space-y-3">
+                  {accounts.slice(0, 6).map((a) => (
+                    <div key={a.id} className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{a.name}</p>
+                        <p className="text-xs text-gray-500">{a.account_type.replace('_', ' ')}</p>
                       </div>
-                    </li>
+                      <p className="text-sm font-semibold text-gray-900">{formatCurrency(a.balance, a.currency)}</p>
+                    </div>
                   ))}
-                </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-semibold text-gray-900">Recent transactions</h3>
+                <Link href="/transactions" className="text-sm text-primary-700 hover:text-primary-800">
+                  View all
+                </Link>
               </div>
+              {summary.recent_transactions.length === 0 ? (
+                <p className="text-sm text-gray-500">No transactions yet. Add one to start seeing cashflow.</p>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {summary.recent_transactions.map((t) => (
+                    <div key={t.id} className="py-3 flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{t.description || 'Transaction'}</p>
+                        <p className="text-xs text-gray-500">{format(new Date(t.date), 'PP')}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={['text-sm font-semibold', t.type === 'income' ? 'text-green-700' : 'text-red-700'].join(' ')}>
+                          {t.type === 'income' ? '+' : '-'}
+                          {formatCurrency(t.amount)}
+                        </p>
+                        <p className="text-xs text-gray-500 capitalize">{t.type}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

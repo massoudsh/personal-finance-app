@@ -29,7 +29,9 @@ export default function RegisterPage() {
 
     try {
       await apiClient.register(formData)
-      router.push('/login')
+      // Auto-login after registration so users don't have to go through the sign-in page.
+      await apiClient.login(formData.username, formData.password)
+      router.push('/dashboard')
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Registration failed')
     } finally {

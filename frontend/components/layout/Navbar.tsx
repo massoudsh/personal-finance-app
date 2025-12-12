@@ -1,43 +1,94 @@
+'use client'
+
 import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
+import Button from '@/components/ui/Button'
 
-interface NavbarProps {
-  currentPath?: string
-}
+export default function Navbar() {
+  const pathname = usePathname()
+  const router = useRouter()
+  const [isAuthed, setIsAuthed] = useState(false)
 
-export default function Navbar({ currentPath }: NavbarProps) {
-  const navItems = [
-    { href: '/dashboard', label: 'Dashboard' },
-    { href: '/accounts', label: 'Accounts' },
-    { href: '/transactions', label: 'Transactions' },
-    { href: '/budgets', label: 'Budgets' },
-    { href: '/goals', label: 'Goals' },
-  ]
+  const navItems = useMemo(
+    () => [
+      { href: '/dashboard', label: 'Overview' },
+      { href: '/accounts', label: 'Accounts' },
+      { href: '/transactions', label: 'Transactions' },
+      { href: '/budgets', label: 'Budgets' },
+      { href: '/goals', label: 'Goals' },
+    ],
+    []
+  )
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token')
+    setIsAuthed(Boolean(token))
+  }, [pathname])
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    setIsAuthed(false)
+    router.replace('/dashboard')
+  }
 
   return (
-    <nav className="bg-white shadow">
+    <nav className="bg-white/80 backdrop-blur border-b border-gray-200 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              <Link href="/dashboard" className="text-xl font-bold text-primary-600">
-                Finance App
-              </Link>
+        <div className="flex justify-between h-16 items-center">
+          <div className="flex items-center gap-6">
+            <Link href="/dashboard" className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-primary-600 text-white flex items-center justify-center font-bold">
+                PF
+              </div>
+              <div className="font-semibold text-gray-900">Personal Finance</div>
+              {!isAuthed && (
+                <span className="ml-1 text-xs font-medium bg-yellow-50 text-yellow-800 border border-yellow-200 px-2 py-0.5 rounded-full">
+                  Guest
+                </span>
+              )}
+            </Link>
+
+            <div className="hidden sm:flex items-center gap-1">
+              {navItems.map((item) => {
+                const active = pathname === item.href
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={[
+                      'px-3 py-2 rounded-md text-sm font-medium',
+                      active ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50',
+                    ].join(' ')}
+                  >
+                    {item.label}
+                  </Link>
+                )
+              })}
             </div>
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                    currentPath === item.href
-                      ? 'border-primary-500 text-gray-900'
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
-                >
-                  {item.label}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isAuthed ? (
+              <>
+                <Link href="/settings" className="text-sm text-gray-600 hover:text-gray-900">
+                  Settings
                 </Link>
-              ))}
-            </div>
+                <Button variant="secondary" onClick={handleLogout}>
+                  Sign out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">
+                  Sign in
+                </Link>
+                <Link href="/register">
+                  <Button>Create account</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>

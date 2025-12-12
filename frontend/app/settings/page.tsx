@@ -3,10 +3,14 @@
 import { useEffect, useState } from 'react'
 import { apiClient } from '@/lib/api'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import Navbar from '@/components/layout/Navbar'
 
 export default function SettingsPage() {
+  const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [isGuest, setIsGuest] = useState(false)
 
   useEffect(() => {
     loadUser()
@@ -18,6 +22,10 @@ export default function SettingsPage() {
       setUser(data)
     } catch (error) {
       console.error('Failed to load user:', error)
+      const status = (error as any)?.response?.status
+      if (status === 401) {
+        setIsGuest(true)
+      }
     } finally {
       setLoading(false)
     }
@@ -26,39 +34,12 @@ export default function SettingsPage() {
   const handleLogout = () => {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
-    window.location.href = '/login'
+    router.replace('/dashboard')
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <Link href="/dashboard" className="text-xl font-bold text-primary-600">Finance App</Link>
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <Link href="/dashboard" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Dashboard
-                </Link>
-                <Link href="/accounts" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Accounts
-                </Link>
-                <Link href="/transactions" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Transactions
-                </Link>
-                <Link href="/budgets" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Budgets
-                </Link>
-                <Link href="/goals" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Goals
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
@@ -66,6 +47,21 @@ export default function SettingsPage() {
 
           {loading ? (
             <div className="text-center py-12">Loading...</div>
+          ) : isGuest ? (
+            <div className="bg-white shadow rounded-lg p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Guest Mode</h3>
+              <p className="text-sm text-gray-600">
+                Create an account to manage profile settings.
+              </p>
+              <div className="mt-6">
+                <Link
+                  href="/register"
+                  className="inline-flex items-center bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 text-sm font-medium"
+                >
+                  Create account
+                </Link>
+              </div>
+            </div>
           ) : user ? (
             <div className="bg-white shadow rounded-lg p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Profile Information</h3>
